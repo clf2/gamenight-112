@@ -1,79 +1,60 @@
 
-// ============================================
-// GAMENIGHT - SUPABASE CONFIGURATION
-// ============================================
-
-const SUPABASE_URL = "PASTE_YOUR_SUPABASE_PROJECT_URL_HERE";
+const SUPABASE_URL = "https://lmhrvhtdwlbmkegsneun.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_WCdQLu7k5CSt1w2uDd8ZYg_OmwARAHl";
 
-const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-const supabaseReady =
-  SUPABASE_URL.startsWith("https://") &&
-  !SUPABASE_URL.includes("PASTE_YOUR_") &&
-  SUPABASE_ANON_KEY.startsWith("sb_publishable_") &&
-  window.supabase;
-
-const db = supabaseReady
-  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
-
-// ============================================
-// GAME DATA
-// ============================================
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
 
 const AVATARS = ["😎","🦊","🐼","🐸","🐯","👾"];
 
 const TRUTHS = [
-  "What is one thing you have never told this group?",
+  "What is your biggest secret?",
   "Who was your first crush?",
-  "What is the most embarrassing song on your playlist?",
-  "What is a silly fear you still have?",
-  "What is the funniest lie you have ever told?",
-  "What is one thing you would change about your past?",
-  "Who in this room would survive longest on a deserted island?",
+  "What is your most embarrassing moment?",
+  "Have you ever lied to your best friend?",
+  "Who is the funniest person in this room?",
+  "What is your biggest fear?",
   "What is your most unusual talent?",
-  "What is the last thing you searched for online?",
-  "What is one harmless secret you can share?"
+  "What is the last thing you searched online?",
+  "Who would you trust with your biggest secret?",
+  "What is one thing you regret?"
 ];
 
 const DARES = [
-  "Do your best celebrity impression for 20 seconds.",
-  "Sing the chorus of a song chosen by the group.",
-  "Talk in a dramatic movie-trailer voice until your next turn.",
-  "Do 10 seconds of your funniest dance.",
-  "Make up a two-line poem about the player on your left.",
-  "Try to say the alphabet backwards as far as you can.",
-  "Give everyone in the room a fun nickname.",
-  "Make your best animal sound and let the group guess it.",
-  "Describe your day using only three emojis.",
-  "Tell a joke. The group decides if it deserves a laugh."
+  "Dance for 20 seconds.",
+  "Sing your favourite song.",
+  "Do your funniest celebrity impression.",
+  "Speak in an accent for one minute.",
+  "Tell everyone a funny joke.",
+  "Make a funny face for 15 seconds.",
+  "Do 10 jumping jacks.",
+  "Describe yourself using only three emojis.",
+  "Give everyone a funny nickname.",
+  "Act like a movie villain."
 ];
 
-const state = {
+let state = {
   room: null,
   player: null,
   players: [],
   channel: null,
-  presenceChannel: null,
   messages: [],
   round: 1,
-  currentChallenge: null,
   isHost: false
 };
 
 let toastTimer;
-
-// ============================================
-// COMMON FUNCTIONS
-// ============================================
 
 function toast(message) {
   const el = $("toast");
   el.textContent = message;
   el.classList.add("show");
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2500);
 }
 
 function setError(message) {
@@ -92,51 +73,23 @@ function escapeHTML(value) {
 
 function makeCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return Array.from(
-    crypto.getRandomValues(new Uint8Array(6)),
-    n => chars[n % chars.length]
-  ).join("");
-}
-
-function requireBackend() {
-  if (!db) {
-    setError("Supabase connection missing. Check your Project URL in app.js.");
-    return false;
-  }
-  return true;
-}
-
-function setBusy(button, busy) {
-  button.disabled = busy;
-  button.dataset.original ||= button.innerHTML;
-  button.innerHTML = busy ? "Please wait…" : button.dataset.original;
-}
-
-// ============================================
-// PLAYER DISPLAY
-// ============================================
-
-function showGame() {
-  $("setup-screen").classList.add("hidden");
-  $("game-screen").classList.remove("hidden");
-  $("room-code-display").textContent = state.room.room_code;
-  $("player-count").textContent = state.players.length;
-  renderPlayers();
+  const bytes = crypto.getRandomValues(new Uint8Array(6));
+  return Array.from(bytes, n => chars[n % chars.length]).join("");
 }
 
 function renderPlayers() {
   $("player-count").textContent = state.players.length;
 
   $("player-grid").innerHTML =
-    Array.from({ length: 6 }, (_, i) => {
+    Array.from({length: 6}, (_, i) => {
       const p = state.players[i];
 
       return `
         <div class="player-tile">
           <div class="player-avatar">${AVATARS[i]}</div>
           <div class="player-info">
-            <strong>${p ? escapeHTML(p.player_name) : "Waiting for player…"}</strong>
-            <small>${p ? (p.id === state.player.id ? "You" : "In the room") : "Slot open"}</small>
+            <strong>${p ? escapeHTML(p.player_name) : "Waiting..."}</strong>
+            <small>${p ? (p.id === state.player.id ? "You" : "Online") : "Empty slot"}</small>
           </div>
           ${p?.is_host ? '<span class="host-tag">HOST</span>' : ""}
         </div>
@@ -146,22 +99,18 @@ function renderPlayers() {
   const full = state.players.length === 6;
 
   $("turn-status").textContent = full
-    ? "All players are in — let's go!"
-    : `${6 - state.players.length} more player(s) needed`;
+    ? "All six players are ready!"
+    : `${6 - state.players.length} players needed`;
 
   $("truth-btn").disabled = !full;
   $("dare-btn").disabled = !full;
 }
 
-// ============================================
-// CHAT DISPLAY
-// ============================================
-
 function renderMessages() {
   const box = $("chat-messages");
 
   if (!state.messages.length) {
-    box.innerHTML = '<div class="chat-empty">Say hi to your crew 👋</div>';
+    box.innerHTML = '<div class="chat-empty">Say hi to your friends 👋</div>';
     return;
   }
 
@@ -181,12 +130,8 @@ function renderMessages() {
   box.scrollTop = box.scrollHeight;
 }
 
-// ============================================
-// DATABASE FUNCTIONS
-// ============================================
-
 async function refreshPlayers() {
-  const { data, error } = await db
+  const {data, error} = await db
     .from("players")
     .select("*")
     .eq("room_id", state.room.id)
@@ -202,7 +147,7 @@ async function refreshPlayers() {
 }
 
 async function loadMessages() {
-  const { data, error } = await db
+  const {data, error} = await db
     .from("messages")
     .select("*")
     .eq("room_id", state.room.id)
@@ -218,104 +163,72 @@ async function loadMessages() {
   renderMessages();
 }
 
-// ============================================
-// ENTER ROOM + REALTIME
-// ============================================
-
 async function enterRoom(room, player, isHost) {
   state.room = room;
   state.player = player;
   state.isHost = isHost;
 
-  showGame();
+  $("setup-screen").classList.add("hidden");
+  $("game-screen").classList.remove("hidden");
+
+  $("room-code-display").textContent = room.room_code;
 
   await Promise.all([
     refreshPlayers(),
     loadMessages()
   ]);
 
-  $("connection-label").textContent = "Connected";
+  $("connection-label").textContent = "Live connection";
 
   state.channel = db.channel("room-" + room.id)
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "players",
-        filter: "room_id=eq." + room.id
-      },
-      () => refreshPlayers()
-    )
-    .on(
-      "postgres_changes",
-      {
-        event: "INSERT",
-        schema: "public",
-        table: "messages",
-        filter: "room_id=eq." + room.id
-      },
-      payload => {
-        if (!state.messages.some(m => m.id === payload.new.id)) {
-          state.messages.push(payload.new);
-          renderMessages();
-        }
-      }
-    )
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "game_state",
-        filter: "room_id=eq." + room.id
-      },
-      payload => applyGameState(payload.new)
-    )
-    .subscribe(status => {
-      if (status === "SUBSCRIBED") {
-        $("connection-label").textContent = "Live connection";
-      }
-    });
 
-  state.presenceChannel = db.channel("presence-" + room.id);
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "players",
+      filter: "room_id=eq." + room.id
+    }, refreshPlayers)
 
-  await state.presenceChannel
-    .on("presence", { event: "sync" }, () => {})
-    .subscribe(async status => {
-      if (status === "SUBSCRIBED") {
-        await state.presenceChannel.track({
-          player_id: player.id,
-          player_name: player.player_name
-        });
+    .on("postgres_changes", {
+      event: "INSERT",
+      schema: "public",
+      table: "messages",
+      filter: "room_id=eq." + room.id
+    }, payload => {
+      if (!state.messages.some(m => m.id === payload.new.id)) {
+        state.messages.push(payload.new);
+        renderMessages();
       }
-    });
+    })
+
+    .on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table: "game_state",
+      filter: "room_id=eq." + room.id
+    }, payload => applyGameState(payload.new))
+
+    .subscribe();
 }
 
-// ============================================
-// CREATE PRIVATE ROOM
-// ============================================
-
 async function createRoom() {
-  if (!requireBackend()) return;
-
   const name = $("player-name").value.trim();
 
   if (!name) {
-    setError("Please enter your name.");
+    setError("Enter your name first.");
     return;
   }
 
   setError("");
-  setBusy($("create-room"), true);
+  $("create-room").disabled = true;
 
   try {
-    let room, player;
+    let room;
 
-    for (let attempt = 0; attempt < 4; attempt++) {
+    for (let i = 0; i < 5; i++) {
       const code = makeCode();
 
-      const { data, error } = await db
+      const result = await db
         .from("rooms")
         .insert({
           room_code: code,
@@ -324,19 +237,19 @@ async function createRoom() {
         .select()
         .single();
 
-      if (!error) {
-        room = data;
+      if (!result.error) {
+        room = result.data;
         break;
       }
 
-      if (error.code !== "23505") throw error;
+      if (result.error.code !== "23505") {
+        throw result.error;
+      }
     }
 
-    if (!room) {
-      throw new Error("Could not generate room code.");
-    }
+    if (!room) throw new Error("Could not create room.");
 
-    const { data, error } = await db
+    const {data: player, error} = await db
       .from("players")
       .insert({
         room_id: room.id,
@@ -348,9 +261,7 @@ async function createRoom() {
 
     if (error) throw error;
 
-    player = data;
-
-    const { error: gameError } = await db
+    const {error: gameError} = await db
       .from("game_state")
       .insert({
         room_id: room.id,
@@ -361,58 +272,52 @@ async function createRoom() {
 
     await enterRoom(room, player, true);
 
-  } catch (e) {
-    setError(e.message || "Could not create room.");
+  } catch (error) {
+    setError(error.message);
   } finally {
-    setBusy($("create-room"), false);
+    $("create-room").disabled = false;
   }
 }
 
-// ============================================
-// JOIN PRIVATE ROOM
-// ============================================
-
 async function joinRoom() {
-  if (!requireBackend()) return;
-
   const name = $("player-name").value.trim();
   const code = $("room-code-input").value.trim().toUpperCase();
 
   if (!name) {
-    setError("Please enter your name.");
+    setError("Enter your name.");
     return;
   }
 
   if (!/^[A-Z2-9]{6}$/.test(code)) {
-    setError("Enter a valid 6-character room code.");
+    setError("Enter a valid room code.");
     return;
   }
 
   setError("");
-  setBusy($("join-room"), true);
+  $("join-room").disabled = true;
 
   try {
-    const { data: room, error: roomError } = await db
+    const {data: room, error: roomError} = await db
       .from("rooms")
       .select("*")
       .eq("room_code", code)
       .maybeSingle();
 
     if (roomError) throw roomError;
-    if (!room) throw new Error("Room not found. Check the code.");
+    if (!room) throw new Error("Room not found.");
 
-    const { count, error: countError } = await db
+    const {count, error: countError} = await db
       .from("players")
-      .select("*", { count: "exact", head: true })
+      .select("*", {count: "exact", head: true})
       .eq("room_id", room.id);
 
     if (countError) throw countError;
 
     if (count >= 6) {
-      throw new Error("This room is full (6/6 players).");
+      throw new Error("Room is full!");
     }
 
-    const { data: player, error } = await db
+    const {data: player, error} = await db
       .from("players")
       .insert({
         room_id: room.id,
@@ -422,25 +327,16 @@ async function joinRoom() {
       .select()
       .single();
 
-    if (error) {
-      if (error.code === "23505") {
-        throw new Error("That name is already used in this room.");
-      }
-      throw error;
-    }
+    if (error) throw error;
 
     await enterRoom(room, player, false);
 
-  } catch (e) {
-    setError(e.message || "Could not join room.");
+  } catch (error) {
+    setError(error.message);
   } finally {
-    setBusy($("join-room"), false);
+    $("join-room").disabled = false;
   }
 }
-
-// ============================================
-// SEND CHAT MESSAGE
-// ============================================
 
 async function sendMessage(event) {
   event.preventDefault();
@@ -448,11 +344,11 @@ async function sendMessage(event) {
   const input = $("chat-input");
   const content = input.value.trim();
 
-  if (!content) return;
+  if (!content || !state.room) return;
 
   input.value = "";
 
-  const { error } = await db
+  const {error} = await db
     .from("messages")
     .insert({
       room_id: state.room.id,
@@ -461,19 +357,12 @@ async function sendMessage(event) {
       content
     });
 
-  if (error) {
-    toast("Message could not be sent.");
-    console.error(error);
-  }
+  if (error) toast("Message failed to send.");
 }
-
-// ============================================
-// TRUTH AND DARE
-// ============================================
 
 async function chooseChallenge(type) {
   if (state.players.length !== 6) {
-    toast("Wait until all six players have joined.");
+    toast("Wait for all six players.");
     return;
   }
 
@@ -486,7 +375,7 @@ async function chooseChallenge(type) {
     by: state.player.player_name
   };
 
-  const { error } = await db
+  const {error} = await db
     .from("game_state")
     .update({
       round_number: state.round,
@@ -495,8 +384,7 @@ async function chooseChallenge(type) {
     .eq("room_id", state.room.id);
 
   if (error) {
-    toast("Could not update the game.");
-    console.error(error);
+    toast("Game update failed.");
     return;
   }
 
@@ -510,12 +398,9 @@ function applyGameState(game) {
   if (!game) return;
 
   state.round = game.round_number || 1;
-
   $("round-number").textContent = state.round;
 
   if (game.challenge) {
-    state.currentChallenge = game.challenge;
-
     $("challenge-icon").textContent =
       game.challenge.type === "truth" ? "💬" : "🔥";
 
@@ -525,25 +410,25 @@ function applyGameState(game) {
     $("challenge-text").textContent = game.challenge.text;
 
     $("turn-status").textContent =
-      `Chosen by ${game.challenge.by}`;
+      "Chosen by " + game.challenge.by;
 
+    $("next-turn").disabled = !state.isHost;
+  } else {
+    $("challenge-icon").textContent = "🎲";
+    $("challenge-title").textContent = "Who's next?";
+    $("challenge-text").textContent =
+      "Choose Truth or Dare!";
+    $("turn-status").textContent = "Choose your challenge";
     $("next-turn").disabled = !state.isHost;
   }
 }
 
-// ============================================
-// NEXT ROUND - HOST ONLY
-// ============================================
-
 async function nextTurn() {
-  if (!state.isHost) {
-    toast("Only the room host can start the next round.");
-    return;
-  }
+  if (!state.isHost) return;
 
-  state.round += 1;
+  state.round++;
 
-  const { error } = await db
+  const {error} = await db
     .from("game_state")
     .update({
       round_number: state.round,
@@ -551,24 +436,8 @@ async function nextTurn() {
     })
     .eq("room_id", state.room.id);
 
-  if (error) {
-    toast("Could not start next round.");
-    return;
-  }
-
-  $("round-number").textContent = state.round;
-  $("challenge-icon").textContent = "🎲";
-  $("challenge-title").textContent = "Who's up next?";
-  $("challenge-text").textContent =
-    "Choose Truth or Dare to reveal the next challenge.";
-
-  $("turn-status").textContent = "Choose your challenge";
-  $("next-turn").disabled = true;
+  if (error) toast("Could not start next round.");
 }
-
-// ============================================
-// LEAVE ROOM
-// ============================================
 
 async function leaveRoom() {
   if (!state.room) return;
@@ -582,26 +451,18 @@ async function leaveRoom() {
     await db.removeChannel(state.channel);
   }
 
-  if (state.presenceChannel) {
-    await db.removeChannel(state.presenceChannel);
-  }
-
   state.room = null;
   state.player = null;
   state.players = [];
   state.messages = [];
   state.channel = null;
-  state.presenceChannel = null;
 
   $("game-screen").classList.add("hidden");
   $("setup-screen").classList.remove("hidden");
-
-  $("connection-label").textContent = "Connected";
-  setError("");
 }
 
 // ============================================
-// EVENT LISTENERS
+// BUTTON CONNECTIONS
 // ============================================
 
 $("create-room").addEventListener("click", createRoom);
@@ -619,8 +480,8 @@ $("dare-btn").addEventListener("click", () => {
 $("next-turn").addEventListener("click", nextTurn);
 $("leave-room").addEventListener("click", leaveRoom);
 
-$("room-code-input").addEventListener("input", e => {
-  e.target.value = e.target.value
+$("room-code-input").addEventListener("input", event => {
+  event.target.value = event.target.value
     .toUpperCase()
     .replace(/[^A-Z2-9]/g, "")
     .slice(0, 6);
@@ -635,11 +496,7 @@ $("copy-code").addEventListener("click", async () => {
   }
 });
 
-// ============================================
-// INITIAL CONNECTION STATUS
-// ============================================
-
 if (!db) {
-  $("connection-label").textContent = "Setup required";
-  setError("Paste your Supabase Project URL in app.js to enable online play.");
+  $("connection-label").textContent = "Connection error";
+  setError("Check Supabase configuration.");
 }
