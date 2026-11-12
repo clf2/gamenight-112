@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#101226">
+  <title>Truth & Dare — Game Night</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="ambient ambient-one"></div><div class="ambient ambient-two"></div>
+  <header class="topbar">
+    <a class="brand" href="#"><span class="brand-icon">✦</span> GAME<span>NIGHT</span></a>
+    <div class="top-actions"><span class="live-dot"></span><span id="connection-label">Connecting…</span></div>
+  </header>
+
+  <main>
+    <section id="setup-screen" class="setup-layout">
+      <div class="intro">
+        <div class="eyebrow"><span>✦</span> SIX FRIENDS. ONE ROOM. ZERO BORING MOMENTS.</div>
+        <h1>Make tonight<br> <span class="gradient-text">unforgettable.</span></h1>
+        <p>Create a private room, invite five friends with a code, and let the truth-or-dare chaos begin.</p>
+        <div class="feature-row"><span>⚡ Live multiplayer</span><span>💬 Real-time chat</span><span>🔒 Private rooms</span></div>
+      </div>
+      <div class="setup-card glass">
+        <div class="card-heading"><div><div class="eyebrow">GET THE GROUP TOGETHER</div><h2>Enter the game</h2></div><div class="card-spark">✧</div></div>
+        <label for="player-name">Your name</label>
+        <input id="player-name" maxlength="18" placeholder="e.g. Alex" autocomplete="nickname">
+        <button id="create-room" class="btn btn-primary"><span>✦</span> Create a private room <span class="btn-arrow">↗</span></button>
+        <div class="or-line"><span>OR JOIN YOUR FRIENDS</span></div>
+        <label for="room-code-input">Room code</label>
+        <input id="room-code-input" class="code-input" maxlength="6" placeholder="ENTER 6-LETTER CODE" autocomplete="off">
+        <button id="join-room" class="btn btn-secondary">Join room <span>→</span></button>
+        <p class="tiny-note">Rooms hold exactly 6 players. First come, first served.</p>
+        <p id="setup-error" class="error" role="alert"></p>
+      </div>
+    </section>
+
+    <section id="game-screen" class="game-layout hidden">
+      <div class="game-main">
+        <div class="room-bar glass">
+          <div><div class="eyebrow">YOUR PRIVATE ROOM</div><div class="room-code-line"><strong id="room-code-display">------</strong><button id="copy-code" class="copy-btn">Copy code</button></div></div>
+          <div class="room-count"><strong id="player-count">1</strong><span>/ 6 PLAYERS</span></div>
+        </div>
+        <div class="game-heading"><div><div class="eyebrow">THE MAIN EVENT</div><h2>Truth <span class="amp">&</span> Dare</h2></div><div class="round-pill">ROUND <span id="round-number">1</span></div></div>
+        <div class="player-grid" id="player-grid"></div>
+        <div class="challenge-card glass">
+          <div class="challenge-top"><span class="challenge-label">✦ YOUR TURN, YOUR CHOICE</span><span class="challenge-status" id="turn-status">Waiting for players</span></div>
+          <div class="challenge-content">
+            <div class="challenge-icon" id="challenge-icon">🎲</div>
+            <h3 id="challenge-title">Ready to play?</h3>
+            <p id="challenge-text">When all six players have joined, choose Truth or Dare and pass the phone-free fun around.</p>
+          </div>
+          <div class="choice-row"><button id="truth-btn" class="choice-btn truth-btn" disabled><span>💬</span><strong>TRUTH</strong><small>Reveal something</small></button><button id="dare-btn" class="choice-btn dare-btn" disabled><span>🔥</span><strong>DARE</strong><small>Take the challenge</small></button></div>
+          <div class="challenge-footer"><span>Be kind. Anyone can pass.</span><button id="next-turn" class="next-btn" disabled>Next player's turn →</button></div>
+        </div>
+        <p class="game-footnote">A good game is a safe game. Skip anything uncomfortable, no explanations needed.</p>
+      </div>
+      <aside class="chat-panel glass">
+        <div class="chat-header"><div><h3>Group chat</h3><p><span class="live-dot"></span> Live conversation</p></div><span class="chat-symbol">✉</span></div>
+        <div id="chat-messages" class="chat-messages"><div class="chat-empty">Say hi to your crew 👋</div></div>
+        <form id="chat-form" class="chat-form"><input id="chat-input" maxlength="400" placeholder="Send a message…" autocomplete="off"><button aria-label="Send message" type="submit">➤</button></form>
+        <div class="chat-note">Keep it friendly ✨</div>
+      </aside>
+      <button id="leave-room" class="leave-btn">← Leave room</button>
+    </section>
+    <footer>MADE FOR FRIENDS <span>✦</span> POWERED BY GOOD VIBES</footer>
+  </main>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
